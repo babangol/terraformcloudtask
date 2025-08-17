@@ -19,14 +19,15 @@ variable "vm_name" {
 }
 
 variable "admin_username" {
-  type    = string
-  default = "rekha"
+  description = "Admin username for Windows VM"
+  type        = string
+  default     = "azureuser"
 }
 
 variable "admin_password" {
-  description = "Windows admin password (set as sensitive in Terraform Cloud workspace variables)"
+  description = "Admin password for Windows VM"
   type        = string
-  sensitive   = true
+  default     = "P@ssword1234!"   # must meet Azure complexity rules
 }
 
 variable "vm_size" {
