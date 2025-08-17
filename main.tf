@@ -1,3 +1,4 @@
+
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
@@ -22,7 +23,6 @@ resource "azurerm_network_security_group" "nsg" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
-  # RDP
   security_rule {
     name                       = "Allow-RDP"
     priority                   = 100
@@ -35,7 +35,6 @@ resource "azurerm_network_security_group" "nsg" {
     destination_address_prefix = "*"
   }
 
-  # WinRM (5985)
   security_rule {
     name                       = "Allow-WinRM-5985"
     priority                   = 110
@@ -75,14 +74,13 @@ resource "azurerm_network_interface" "nic" {
   }
 }
 
-# Merged into ONE Windows VM resource
 resource "azurerm_windows_virtual_machine" "vm" {
-  name                  = var.vm_name
-  resource_group_name   = azurerm_resource_group.rg.name
-  location              = azurerm_resource_group.rg.location
-  size                  = var.vm_size   # e.g., "Standard_B2s"
-  admin_username        = var.admin_username
-  admin_password        = var.admin_password
+  name                = var.vm_name
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = var.vm_size
+  admin_username      = var.admin_username
+  admin_password      = var.admin_password
   network_interface_ids = [azurerm_network_interface.nic.id]
 
   os_disk {
@@ -91,10 +89,10 @@ resource "azurerm_windows_virtual_machine" "vm" {
   }
 
   source_image_reference {
-    publisher = var.image_publisher    # e.g., "MicrosoftWindowsServer"
-    offer     = var.image_offer        # e.g., "WindowsServer"
-    sku       = var.image_sku          # e.g., "2019-Datacenter"
-    version   = var.image_vers         # e.g., "latest"
+    publisher = var.image_publisher
+    offer     = var.image_offer
+    sku       = var.image_sku
+    version   = var.image_version
   }
 
   tags = {
@@ -102,7 +100,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   }
 }
 
-# Enable WinRM (5985) on the VM
+# Use Custom Script Extension to enable WinRM and allow firewall rule for 5985
 resource "azurerm_virtual_machine_extension" "enable_winrm" {
   name                 = "enable-winrm"
   virtual_machine_id   = azurerm_windows_virtual_machine.vm.id
@@ -112,7 +110,7 @@ resource "azurerm_virtual_machine_extension" "enable_winrm" {
 
   settings = <<SETTINGS
 {
-  "commandToExecute": "powershell -ExecutionPolicy Unrestricted -Command \"winrm quickconfig -quiet; Set-Item -Path WSMan:\\\\localhost\\\\Service\\\\AllowUnencrypted -Value true -Force; Set-Item -Path WSMan:\\\\localhost\\\\Service\\\\Auth\\\\Basic -Value true -Force; New-NetFirewallRule -DisplayName 'Allow WinRM HTTP 5985' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985\""
+  "commandToExecute": "powershell -ExecutionPolicy Unrestricted -Command \"winrm quickconfig -quiet; Set-Item -Path WSMan:\\localhost\\Service\\AllowUnencrypted -Value true -Force; Set-Item -Path WSMan:\\localhost\\Service\\Auth\\Basic -Value true -Force; New-NetFirewallRule -DisplayName 'Allow WinRM HTTP 5985' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985\""
 }
 SETTINGS
 }
